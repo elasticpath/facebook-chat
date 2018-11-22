@@ -246,6 +246,7 @@ function requestWelcomeMessage(sender_psid, itemsInCart) {
   // Sends Initial Welcome Message along with the message ID
   sendMessageToUser(sender_psid, getMessageWelcome(itemsInCartInt), 1);
   // If there's at least 1 item in the cart sends message with shopping cart items
+  sendMessageToUser(sender_psid, getOrderStatusTemplate());
   if (itemsInCartInt > 0) {
     sendMessageShoppingCart(itemsInCart, sender_psid);
   }
@@ -557,6 +558,24 @@ function getCheckoutTemplate(checkoutResponse) {
   };
 }
 
+function getOrderStatusTemplate() {
+  return {
+    'attachment': {
+      'type': 'template',
+      'payload': {
+        'template_type': 'button',
+        'text': '',
+        'buttons': [
+          {
+            'type': 'postback',
+            'title': 'Check out my past orders',
+            'payload': 'check'
+          }
+        ]
+      }
+    }
+  }
+}
 // Deprecated
 // Sample order receipt used for reference only
 function getOrderReceipt() {
