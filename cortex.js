@@ -154,9 +154,6 @@ Cortex.prototype.cortexDeleteFromCart = function (sku) {
       var listOfLineItems = convertToObj(listOfLineItemsStr);
       let lineItems = [];
 
-      if (data['_defaultcart'] && data['_defaultcart'][0] && data['_defaultcart'][0]['_lineitems']) {
-        lineItems = data['_defaultcart'][0]['_lineitems'][0]['_element'];
-      }
       var elements = listOfLineItems._defaultcart[0]._lineitems[0]._element;
       var promises = [];
       elements.forEach((element) => {
@@ -393,7 +390,12 @@ Cortex.prototype.getCartItems = function () {
           resolve({});
         }
 
-        const lineItems = data['_defaultcart'][0]['_lineitems'][0]['_element'];
+        let lineItems = {};
+
+        if (data['_defaultcart'] && data['_defaultcart'][0] && data['_defaultcart'][0]['_lineitems']) {
+          lineItems = data['_defaultcart'][0]['_lineitems'][0]['_element'];
+        }
+
         var promises = [];
         let wishlistItem = {};
 
