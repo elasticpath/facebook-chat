@@ -145,7 +145,8 @@ function getCortexInstance(sender_psid, option) {
 
 // Delegate each input request to required function
 function parseMessageFromUser(sender_psid, messageID) {
-  if (messageID === 1) {
+
+  if (messageID === WELCOME_MENU) {
     console.log('EP-CHATBOT. Requesting welcome message');
 
     global.cortexInstance.getCartItems().then((itemsInCart) => {
@@ -159,15 +160,35 @@ function parseMessageFromUser(sender_psid, messageID) {
       requestGetWishList(sender_psid, wishlistResponse)
     }).catch((err) => console.log(err));
 
-  } else if (messageID === 'yes') {
+  } else if (messageID === CHECKOUT_YES) {
     console.log('EP-CHATBOT. Requesting checkout');
 
     global.cortexInstance.cortexCheckout().then((checkoutResponse) => {
       requestCheckout(sender_psid, checkoutResponse)
     }).catch((err) => console.log(err))
 
-  } else if (messageID === 'no') {
+  } else if (messageID === CHECKOUT_NO) {
     requestMoveToWishlist(sender_psid);
+  } else if (messageID === SEE_PAST_ORDERS) {
+    requestShowPastOrders(sender_psid).then(data => {
+      const jsonData = JSON.parse(data);
+      const purchases = jsonData['_defaultprofile'][0]['_purchases'][0]['_element'];
+      const orders = [];
+
+      for (let i = 0; i < purchases.length; i++) {
+        orders.push(purchases[i]['purchase-number']);
+      }
+      requestOrdersMessage(sender_psid, orders);
+    }).catch(err => {
+      console.log(err);
+    });
+  } else if (messageID.startsWith(ORDER_PREFIX)) {
+    const orderToFetch = messageID.replace(ORDER_PREFIX, '');
+    requestFetchOrder(sender_psid, orderToFetch).then((response) => {
+      const orderResult = JSON.parse(response);
+
+      requestOrderMessage(sender_psid, orderResult);
+    }).catch((err) => console.log(err))
   }
 }
 
@@ -190,20 +211,20 @@ function sendMessageToUser(sender_psid, response, messageID) {
     json: request_body
   }, (err, res, body) => {
     if (!err) {
-      console.log('EP-CHATBOT. Message sent to Facebook API');
       // If there are items in the cart, prompts to checkout after a few seconds.
-      if (messageID === 2) {
+      if (messageID === CHECKOUT_MENU) {
         sendTypingMessage(sender_psid, '', 0);
         setTimeout(function () {
           sendMessageToUser(sender_psid, getCheckoutTemplate(), 3)
         }, 3500);
       }
       // After finishing a transaction, displays main menu again.
-      if (messageID === 4) {
+      if (messageID === MAIN_MENU) {
         setTimeout(function () {
           sendMessageToUser(sender_psid, getMainMenuTemplate("What else I can do for you?"), 7)
         }, 3500);
       }
+      console.log('EP-CHATBOT. Message sent to Facebook API');
     } else {
       console.error("EP-CHATBOT. Unable to send message to Facebook API" + err);
     }
@@ -244,12 +265,112 @@ function sendTypingMessage(sender_psid, response, messageID) {
 function requestWelcomeMessage(sender_psid, itemsInCart) {
   const itemsInCartInt = getTotalItemsInCart(itemsInCart);
   // Sends Initial Welcome Message along with the message ID
-  sendMessageToUser(sender_psid, getMessageWelcome(itemsInCartInt), 1);
+  sendMessageToUser(sender_psid, getMessageWelcome(itemsInCartInt), WELCOME_MENU);
+
   // If there's at least 1 item in the cart sends message with shopping cart items
   sendMessageToUser(sender_psid, getOrderStatusTemplate());
   if (itemsInCartInt > 0) {
     sendMessageShoppingCart(itemsInCart, sender_psid);
   }
+
+  setTimeout(function () {
+    sendMessageToUser(sender_psid, getOrderStatusTemplate(), NO_MENU)
+  }, 3500);
+}
+
+function requestOrdersMessage(sender_psid, orders) {
+  console.log('EP-CHATBOT: Requested to send all orders');
+  sendMessageToUser(sender_psid, getAllOrdersTemplate(orders), 7);
+}
+
+function requestOrderMessage(sender_psid, orderToFetch) {
+  console.log('EP-CHATBOT: Requested to fetch order #' + orderToFetch['purchase-number']);
+  setTimeout(function () {
+    sendMessageToUser(sender_psid, getPastOrderTemplate(orderToFetch), MAIN_MENU)
+  }, 3500);
+}
+
+function getPastOrderTemplate(checkoutJSON) {
+
+  const orderTotal = (checkoutJSON['monetary-total'][0].amount);
+  const orderTax = checkoutJSON['tax-total'].amount;
+  const orderShipping = 18.8;
+  const orderSubtotal = orderTotal - orderTax - orderShipping;
+  const orderNumber = checkoutJSON['purchase-number'];
+  const orderDate = checkoutJSON['purchase-date'].value / 1000;
+  let orderStatus = checkoutJSON.status;
+  const orderElements = checkoutJSON['_lineitems'][0]['_element'];
+  const response = {};
+
+  switch (orderStatus) {
+    case 'FAILED':
+      orderStatus = 'Aborted';
+      break;
+    case 'ORDER_CREATED':
+      orderStatus = 'Order created';
+      break;
+    case 'IN_PROGRESS':
+      orderStatus = 'In progress';
+      break;
+    case 'COMPLETED':
+      orderStatus = 'Completed';
+      break;
+    case 'PARTIALLY_SHIPPED':
+      orderStatus = 'Shipped';
+      break;
+    case 'ONHOLD':
+      orderStatus = 'On hold';
+      break;
+    case 'CANCELLED':
+      orderStatus = 'Cancelled';
+      break;
+    case 'AWAITING_EXCHANGE':
+      orderStatus = 'Waiting for exchange';
+      break;
+  }
+
+  response.attachment = {};
+  response.attachment.payload = {};
+  response.attachment.payload.address = {};
+  response.attachment.payload.summary = {};
+  response.attachment.payload.adjustments = [];
+  response.attachment.payload.elements = [];
+
+  response.attachment.type = 'template';
+
+  response.attachment.payload['template_type'] = 'receipt';
+  response.attachment.payload['recipient_name'] = 'Emma Faust';
+  response.attachment.payload['order_number'] = '#' + orderNumber + ' status:' + orderStatus;
+  response.attachment.payload.currency = 'USD';
+  response.attachment.payload.timestamp = orderDate;
+  response.attachment.payload['payment_method'] = 'Visa 9076';
+  response.attachment.payload['order_url'] = 'http://petersapparel.parseapp.com/order?order_id=123456';
+
+  response.attachment.payload.address['street_1'] = '5th Avenue';
+  response.attachment.payload.address['street_2'] = '';
+  response.attachment.payload.address.city = 'New York';
+  response.attachment.payload.address['postal_code'] = '10203';
+  response.attachment.payload.address.state = 'NY';
+  response.attachment.payload.address.country = 'US';
+
+  response.attachment.payload.summary.subtotal = orderSubtotal;
+  response.attachment.payload.summary['shipping_cost'] = orderShipping;
+  response.attachment.payload.summary['total_tax'] = orderTax;
+  response.attachment.payload.summary['total_cost'] = orderTotal;
+
+  for (let i = 0; i < orderElements.length; i++) {
+    const element = {};
+
+    element.title = orderElements[i]['_item'][0]['_definition'][0]['display-name'];
+    element.price = orderElements[i]['_item'][0]['_price'][0]['purchase-price'][0].amount;
+    element['image_url'] = EP_IMAGES + orderElements[i]['_item'][0]['_code'][0].code + ".png";
+    element.currency = orderElements[i]['_item'][0]['_price'][0]['purchase-price'][0].currency;
+    element.quantity = checkoutJSON['_lineitems'][0]['_element'][i].quantity;
+
+    response.attachment.payload.elements.push(element);
+  }
+
+  return response;
 }
 
 // Returns the number of items in the Shopping Cart
@@ -316,10 +437,9 @@ function requestCheckout(sender_psid, checkoutResponse) {
   // TODO: Add messageID to this message
   sendMessageToUser(sender_psid, response);
   const orderJSON = getOrderTemplate(checkoutResponse);
-  console.log('orderJSON = ' + orderJSON);
   orderArray = [];
   setTimeout(function () {
-    sendMessageToUser(sender_psid, orderJSON, 4)
+    sendMessageToUser(sender_psid, orderJSON, MAIN_MENU)
   }, 3500);
 }
 
@@ -342,10 +462,21 @@ function requestMoveToWishlist(sender_psid) {
   orderArray = [];
   Promise.all(promises, promisesDelete).then((response) => {
     // Send confirmation message
-    sendMessageToUser(sender_psid, getMainMenuTemplate("That's fine! I moved all items in the shopping bag to your wishlist. What else I can do for you?"), 5);
+    sendMessageToUser(sender_psid, getMainMenuTemplate("That's fine! I moved all items in the shopping bag to your wishlist. What else I can do for you?"), NO_MENU);
   });
 }
 
+function requestShowPastOrders(sender_psid) {
+  console.log('EP-CHATBOT. Fetching all past orders');
+
+  return global.cortexInstance.cortexGetPurchases();
+}
+
+function requestFetchOrder(sender_psid, orderToFetch) {
+  console.log('EP-CHATBOT. Fetching order #' + orderToFetch);
+
+  return global.cortexInstance.cortexGetOrder(EP_SCOPE, orderToFetch);
+}
 
 // Get image URL based on product code and validate that exists
 function getImageURL(productCode) {
@@ -353,6 +484,9 @@ function getImageURL(productCode) {
 
   return new Promise(resolve => {
     urlExists(imageURL, function (err, exists) {
+      console.log('err image = ' + err);
+      console.log('exists image = ' + JSON.stringify(exists));
+      console.log('imageURL = ' + imageURL);
       if (exists) {
         resolve(imageURL);
       } else {
@@ -360,6 +494,7 @@ function getImageURL(productCode) {
         if (index > 0) {
           productCode = productCode.substring(0, index);
           imageURL = EP_IMAGES + productCode + ".png";
+          console.log('ooooops = ' + imageURL);
           resolve(imageURL);
         }
       }
@@ -377,11 +512,11 @@ function getMessageWelcome(itemsInCartInt) {
   let response = getMainMenuTemplate("Welcome back Emma! You don't have items in your shopping bag. How can I help you today?");
   if (!isNaN(itemsInCartInt)) {
     if (itemsInCartInt === 1) {
-      response = {"text": `Welcome back Emma! I found the following item in your shopping bag`};
+      response = {"text": 'Welcome back Emma! I found the following item in your shopping bag'};
     } else if (itemsInCartInt === 0) {
-      response = {"text": `Welcome Emma! Your shopping bag is empty`}
+      response = {"text": 'Welcome Emma! Your shopping bag is empty'}
     } else {
-      response = {"text": `Welcome back Emma! I found the following items in your shopping bag`};
+      response = {"text": 'Welcome back Emma! I found the following items in your shopping bag'};
     }
   }
   return response;
@@ -396,9 +531,13 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
 
   const keys = Object.keys(itemsInCart);
 
+  console.log('keys = ' + JSON.stringify(keys));
   for (let i = 0; i < keys.length; i++) {
     promises.push(getImageURL(itemsInCart[keys[i]].wishlistItem.code));
+    console.log('promise = ' + JSON.stringify(promises[i]));
   }
+
+  console.log('there are ' + promises.length + ' promises');
 
   Promise.all(promises).then((productImages) => {
 
@@ -434,8 +573,8 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
     }
 
     // Sends Shopping Cart Information to the User
-    sendMessageToUser(sender_psid, response, 2);
-  });
+    sendMessageToUser(sender_psid, response, CHECKOUT_MENU);
+  }).catch((err) => console.log(err));
 }
 
 /*****************************/
@@ -473,6 +612,10 @@ function getMainMenuTemplate(introText) {
   };
 }
 
+function getSingleOrderStatusTemplate(order) {
+  return {'text': 'Your order #' + order.number + ' of a total of ' + order.total + ' from ' + order.date + ' is ' + order.status + '!'};
+}
+
 // Generates Order Template
 // TODO: Don't hard code name and address
 function getOrderTemplate(checkoutJSON) {
@@ -483,6 +626,7 @@ function getOrderTemplate(checkoutJSON) {
   const orderSubtotal = orderTotal - orderTax - orderShipping;
   const orderNumber = checkoutJSON['purchase-number'];
   const orderDate = Math.floor(new Date() / 1000);
+  const orderStatus = checkoutJSON.status;
 
   const response = {};
 
@@ -497,7 +641,7 @@ function getOrderTemplate(checkoutJSON) {
 
   response.attachment.payload['template_type'] = 'receipt';
   response.attachment.payload['recipient_name'] = 'Emma Faust';
-  response.attachment.payload['order_number'] = orderNumber;
+  response.attachment.payload['order_number'] = orderNumber + ' status:' + orderStatus;
   response.attachment.payload.currency = 'USD';
   response.attachment.payload.timestamp = orderDate;
   response.attachment.payload['payment_method'] = 'Visa 9076';
@@ -528,9 +672,7 @@ function getOrderTemplate(checkoutJSON) {
     response.attachment.payload.elements.push(element);
   }
 
-  console.log('EP-CHATBOT. Parsed response: ', JSON.stringify(response));
-
-  return JSON.stringify(response);
+  return response;
 }
 
 //Returns checkout template
@@ -545,17 +687,66 @@ function getCheckoutTemplate(checkoutResponse) {
           {
             "type": "postback",
             "title": "Yes!",
-            "payload": "yes"
+            "payload": CHECKOUT_YES
           },
           {
             "type": "postback",
             "title": "Not sure 😳",
-            "payload": "no"
+            "payload": CHECKOUT_NO
           }
         ]
       }
     }
   };
+}
+
+function getOrderStatusTemplate() {
+  let result = {
+    'attachment': {
+      'type': 'template',
+      'payload': {
+        'template_type': 'button',
+        'text': 'See my past orders',
+        'buttons': [
+          {
+            'type': 'postback',
+            'title': 'See my past orders',
+            'payload': SEE_PAST_ORDERS
+          }
+        ]
+      }
+    }
+  };
+
+  return result;
+}
+
+function getAllOrdersTemplate(orders) {
+  let buttons = [];
+
+  // Facebook limits to 3 the number of buttons you can send in each template.
+  for (let i = 0; i < 3; i++) {
+    const button = {
+      'type': 'postback',
+      'title': '#' + orders[i],
+      'payload': ORDER_PREFIX + orders[i]
+    };
+
+    buttons.push(button);
+  }
+
+  let result = {
+    'attachment': {
+      'type': 'template',
+      'payload': {
+        'template_type': 'button',
+        'text': 'Orders: ',
+        'buttons': buttons
+      }
+    }
+  };
+
+  return result;
 }
 
 function getOrderStatusTemplate() {

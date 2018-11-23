@@ -390,7 +390,7 @@ Cortex.prototype.getCartItems = function () {
           resolve({});
         }
 
-        let lineItems = {};
+        let lineItems = [];
 
         if (data['_defaultcart'] && data['_defaultcart'][0] && data['_defaultcart'][0]['_lineitems']) {
           lineItems = data['_defaultcart'][0]['_lineitems'][0]['_element'];
@@ -614,6 +614,16 @@ Cortex.prototype.cortexShoppingCartLinePrice = function () {
   return this.cortexGet(url);
 };
 
+Cortex.prototype.cortexGetPurchases = function () {
+  const url = this.cortexBaseUrl + '?zoom=defaultprofile:purchases:element';
+  return this.cortexGet(url);
+};
+
+Cortex.prototype.cortexGetOrder = function (scope, orderToFetch) {
+  const url = this.cortexBaseUrl + '/purchases/' + scope + '/lookups/form?followlocation&zoom=lineitems:element:item,lineitems:element:item:code,lineitems:element:item:price,lineitems:element,lineitems:element:item:definition';
+
+  return this.cortexPost(url, {'purchase-number': orderToFetch});
+}
 /**
  * In Cart
  */
