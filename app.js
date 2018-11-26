@@ -41,6 +41,15 @@ let Cortex = require("./cortex");
 let urlExists = require('url-exists');
 let orderArray = [];
 
+const WELCOME_MENU = 1;
+const CHECKOUT_MENU = 2;
+const MAIN_MENU = 4;
+const NO_MENU = -1;
+const CHECKOUT_YES = 'yes';
+const CHECKOUT_NO = 'no';
+const SEE_PAST_ORDERS = 'see_past_orders';
+const ORDER_PREFIX = 'order:';
+
 const
   request = require('request'),
   express = require('express'),
@@ -213,16 +222,17 @@ function sendMessageToUser(sender_psid, response, messageID) {
     if (!err) {
       // If there are items in the cart, prompts to checkout after a few seconds.
       if (messageID === CHECKOUT_MENU) {
-        sendTypingMessage(sender_psid, '', 0);
+        sendTypingMessage(sender_psid, '', NO_MENU);
         setTimeout(function () {
-          sendMessageToUser(sender_psid, getCheckoutTemplate(), 3)
-        }, 3500);
+          sendMessageToUser(sender_psid, getCheckoutTemplate(), NO_MENU)
+        }, 1500);
       }
       // After finishing a transaction, displays main menu again.
       if (messageID === MAIN_MENU) {
+        sendTypingMessage(sender_psid, '', NO_MENU);
         setTimeout(function () {
-          sendMessageToUser(sender_psid, getMainMenuTemplate("What else I can do for you?"), 7)
-        }, 3500);
+          sendMessageToUser(sender_psid, getMainMenuTemplate("What else I can do for you?"), NO_MENU)
+        }, 1500);
       }
       console.log('EP-CHATBOT. Message sent to Facebook API');
     } else {
@@ -268,26 +278,25 @@ function requestWelcomeMessage(sender_psid, itemsInCart) {
   sendMessageToUser(sender_psid, getMessageWelcome(itemsInCartInt), WELCOME_MENU);
 
   // If there's at least 1 item in the cart sends message with shopping cart items
-  sendMessageToUser(sender_psid, getOrderStatusTemplate());
   if (itemsInCartInt > 0) {
     sendMessageShoppingCart(itemsInCart, sender_psid);
+  } else {
+    setTimeout(function () {
+      sendMessageToUser(sender_psid, getOrderStatusTemplate(), NO_MENU)
+    }, 1500);
   }
-
-  setTimeout(function () {
-    sendMessageToUser(sender_psid, getOrderStatusTemplate(), NO_MENU)
-  }, 3500);
 }
 
 function requestOrdersMessage(sender_psid, orders) {
   console.log('EP-CHATBOT: Requested to send all orders');
-  sendMessageToUser(sender_psid, getAllOrdersTemplate(orders), 7);
+  sendMessageToUser(sender_psid, getAllOrdersTemplate(orders), NO_MENU);
 }
 
 function requestOrderMessage(sender_psid, orderToFetch) {
   console.log('EP-CHATBOT: Requested to fetch order #' + orderToFetch['purchase-number']);
   setTimeout(function () {
     sendMessageToUser(sender_psid, getPastOrderTemplate(orderToFetch), MAIN_MENU)
-  }, 3500);
+  }, 1500);
 }
 
 function getPastOrderTemplate(checkoutJSON) {
@@ -340,7 +349,7 @@ function getPastOrderTemplate(checkoutJSON) {
 
   response.attachment.payload['template_type'] = 'receipt';
   response.attachment.payload['recipient_name'] = 'Emma Faust';
-  response.attachment.payload['order_number'] = '#' + orderNumber + ' status:' + orderStatus;
+  response.attachment.payload['order_number'] = '#' + orderNumber + ' - status: ' + orderStatus;
   response.attachment.payload.currency = 'USD';
   response.attachment.payload.timestamp = orderDate;
   response.attachment.payload['payment_method'] = 'Visa 9076';
@@ -440,7 +449,7 @@ function requestCheckout(sender_psid, checkoutResponse) {
   orderArray = [];
   setTimeout(function () {
     sendMessageToUser(sender_psid, orderJSON, MAIN_MENU)
-  }, 3500);
+  }, 1500);
 }
 
 // If the user don't want to checkout, moves items to the wishlist
@@ -484,9 +493,6 @@ function getImageURL(productCode) {
 
   return new Promise(resolve => {
     urlExists(imageURL, function (err, exists) {
-      console.log('err image = ' + err);
-      console.log('exists image = ' + JSON.stringify(exists));
-      console.log('imageURL = ' + imageURL);
       if (exists) {
         resolve(imageURL);
       } else {
@@ -494,7 +500,6 @@ function getImageURL(productCode) {
         if (index > 0) {
           productCode = productCode.substring(0, index);
           imageURL = EP_IMAGES + productCode + ".png";
-          console.log('ooooops = ' + imageURL);
           resolve(imageURL);
         }
       }
@@ -531,13 +536,9 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
 
   const keys = Object.keys(itemsInCart);
 
-  console.log('keys = ' + JSON.stringify(keys));
   for (let i = 0; i < keys.length; i++) {
     promises.push(getImageURL(itemsInCart[keys[i]].wishlistItem.code));
-    console.log('promise = ' + JSON.stringify(promises[i]));
   }
-
-  console.log('there are ' + promises.length + ' promises');
 
   Promise.all(promises).then((productImages) => {
 
@@ -626,7 +627,34 @@ function getOrderTemplate(checkoutJSON) {
   const orderSubtotal = orderTotal - orderTax - orderShipping;
   const orderNumber = checkoutJSON['purchase-number'];
   const orderDate = Math.floor(new Date() / 1000);
-  const orderStatus = checkoutJSON.status;
+  let orderStatus = checkoutJSON.status;
+
+  switch (orderStatus) {
+    case 'FAILED':
+      orderStatus = 'Aborted';
+      break;
+    case 'ORDER_CREATED':
+      orderStatus = 'Order created';
+      break;
+    case 'IN_PROGRESS':
+      orderStatus = 'In progress';
+      break;
+    case 'COMPLETED':
+      orderStatus = 'Completed';
+      break;
+    case 'PARTIALLY_SHIPPED':
+      orderStatus = 'Shipped';
+      break;
+    case 'ONHOLD':
+      orderStatus = 'On hold';
+      break;
+    case 'CANCELLED':
+      orderStatus = 'Cancelled';
+      break;
+    case 'AWAITING_EXCHANGE':
+      orderStatus = 'Waiting for exchange';
+      break;
+  }
 
   const response = {};
 
@@ -641,7 +669,7 @@ function getOrderTemplate(checkoutJSON) {
 
   response.attachment.payload['template_type'] = 'receipt';
   response.attachment.payload['recipient_name'] = 'Emma Faust';
-  response.attachment.payload['order_number'] = orderNumber + ' status:' + orderStatus;
+  response.attachment.payload['order_number'] = '#' + orderNumber + ' - status: ' + orderStatus;
   response.attachment.payload.currency = 'USD';
   response.attachment.payload.timestamp = orderDate;
   response.attachment.payload['payment_method'] = 'Visa 9076';
@@ -693,6 +721,11 @@ function getCheckoutTemplate(checkoutResponse) {
             "type": "postback",
             "title": "Not sure 😳",
             "payload": CHECKOUT_NO
+          },
+          {
+            'type': 'postback',
+            'title': 'See my past orders',
+            'payload': SEE_PAST_ORDERS
           }
         ]
       }
@@ -724,8 +757,11 @@ function getOrderStatusTemplate() {
 function getAllOrdersTemplate(orders) {
   let buttons = [];
 
+  if (orders.length > 3) {
+    orders.length = 3;
+  }
   // Facebook limits to 3 the number of buttons you can send in each template.
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < orders.length; i++) {
     const button = {
       'type': 'postback',
       'title': '#' + orders[i],
@@ -749,24 +785,6 @@ function getAllOrdersTemplate(orders) {
   return result;
 }
 
-function getOrderStatusTemplate() {
-  return {
-    'attachment': {
-      'type': 'template',
-      'payload': {
-        'template_type': 'button',
-        'text': '',
-        'buttons': [
-          {
-            'type': 'postback',
-            'title': 'Check out my past orders',
-            'payload': 'check'
-          }
-        ]
-      }
-    }
-  }
-}
 // Deprecated
 // Sample order receipt used for reference only
 function getOrderReceipt() {
