@@ -233,6 +233,13 @@ function parseMessageFromUser(sender_psid, messageID) {
 
         console.log('EP-CHATBOT. Requesting move ' + objectToMove + ' to wish list');
 
+        global.cortexInstance.cortexAddToWishlist(objectToMove).then((response) => {
+          global.cortexInstance.cortexDeleteFromCart(objectToMove).then((response) => {
+            setTimeout(function () {
+              sendMessageToUser(sender_psid, getMainMenuTemplate("The item has been moved to your wishlist and removed from your cart. What else can I do for you?"), NO_MENU)
+            }, 1500);
+          }).catch((err) => console.log(err));
+        }).catch((err) => console.log(err));
       } else if (messageID.startsWith(REMOVE_FROM_CART_PREFIX)) {
 
         const objectToRemove = messageID.replace(REMOVE_FROM_CART_PREFIX, '');
