@@ -41,14 +41,18 @@ let Cortex = require("./cortex");
 let urlExists = require('url-exists');
 let orderArray = [];
 
+const NO_MENU = -1;
 const WELCOME_MENU = 1;
 const CHECKOUT_MENU = 2;
 const MAIN_MENU = 4;
-const NO_MENU = -1;
 const CHECKOUT_YES = 'yes';
 const CHECKOUT_NO = 'no';
 const SEE_PAST_ORDERS = 'see_past_orders';
+const WISHLIST_MENU = 'wishlist';
+
 const ORDER_PREFIX = 'order:';
+const MOVE_WISHLIST_PREFIX = 'move_wishlist:';
+const REMOVE_FROM_CART_PREFIX = 'remove:';
 
 const
   request = require('request'),
@@ -155,49 +159,92 @@ function getCortexInstance(sender_psid, option) {
 // Delegate each input request to required function
 function parseMessageFromUser(sender_psid, messageID) {
 
-  if (messageID === WELCOME_MENU) {
-    console.log('EP-CHATBOT. Requesting welcome message');
+  console.log('message ID = ' + messageID);
+  switch(messageID) {
+    case WELCOME_MENU:
+      console.log('EP-CHATBOT. Requesting welcome message');
 
-    global.cortexInstance.getCartItems().then((itemsInCart) => {
-      requestWelcomeMessage(sender_psid, itemsInCart)
-    }).catch((err) => console.log(err))
+      global.cortexInstance.getCartItems().then((itemsInCart) => {
+        requestWelcomeMessage(sender_psid, itemsInCart)
+      }).catch((err) => console.log(err))
 
-  } else if (messageID === 'wishlist') {
-    console.log('EP-CHATBOT. Requesting wishlist');
+      break;
 
-    global.cortexInstance.getWishlistItems().then((wishlistResponse) => {
-      requestGetWishList(sender_psid, wishlistResponse)
-    }).catch((err) => console.log(err));
+    case WISHLIST_MENU:
+      console.log('EP-CHATBOT. Requesting wishlist');
 
-  } else if (messageID === CHECKOUT_YES) {
-    console.log('EP-CHATBOT. Requesting checkout');
+      global.cortexInstance.getWishlistItems().then((wishlistResponse) => {
+        requestGetWishList(sender_psid, wishlistResponse)
+      }).catch((err) => console.log(err));
 
-    global.cortexInstance.cortexCheckout().then((checkoutResponse) => {
-      requestCheckout(sender_psid, checkoutResponse)
-    }).catch((err) => console.log(err))
+      break;
 
-  } else if (messageID === CHECKOUT_NO) {
-    requestMoveToWishlist(sender_psid);
-  } else if (messageID === SEE_PAST_ORDERS) {
-    requestShowPastOrders(sender_psid).then(data => {
-      const jsonData = JSON.parse(data);
-      const purchases = jsonData['_defaultprofile'][0]['_purchases'][0]['_element'];
-      const orders = [];
+    case CHECKOUT_YES:
+      console.log('EP-CHATBOT. Requesting checkout');
 
-      for (let i = 0; i < purchases.length; i++) {
-        orders.push(purchases[i]['purchase-number']);
+      global.cortexInstance.cortexCheckout().then((checkoutResponse) => {
+        requestCheckout(sender_psid, checkoutResponse)
+      }).catch((err) => console.log(err))
+
+      break;
+
+    case CHECKOUT_NO:
+      console.log('EP-CHATBOT. Refusing checkout');
+
+      requestMoveToWishlist(sender_psid);
+
+      break;
+
+    case SEE_PAST_ORDERS:
+
+      console.log('EP-CHATBOT. Requesting past orders');
+
+      requestShowPastOrders(sender_psid).then(data => {
+        const jsonData = JSON.parse(data);
+        const purchases = jsonData['_defaultprofile'][0]['_purchases'][0]['_element'];
+        const orders = [];
+
+        for (let i = 0; i < purchases.length; i++) {
+          orders.push(purchases[i]['purchase-number']);
+        }
+        requestOrdersMessage(sender_psid, orders);
+      }).catch(err => {
+        console.log(err);
+      });
+
+      break;
+    default:
+
+      if (messageID.startsWith(ORDER_PREFIX)) {
+
+        const orderToFetch = messageID.replace(ORDER_PREFIX, '');
+
+        console.log('EP-CHATBOT. Requesting order #' + orderToFetch);
+
+        requestFetchOrder(sender_psid, orderToFetch).then((response) => {
+          const orderResult = JSON.parse(response);
+
+          requestOrderMessage(sender_psid, orderResult);
+        }).catch((err) => console.log(err))
+
+      } else if (messageID.startsWith(MOVE_WISHLIST_PREFIX)) {
+
+        const objectToMove = messageID.replace(MOVE_WISHLIST_PREFIX, '');
+
+        console.log('EP-CHATBOT. Requesting move ' + objectToMove + ' to wish list');
+
+      } else if (messageID.startsWith(REMOVE_FROM_CART_PREFIX)) {
+
+        const objectToRemove = messageID.replace(REMOVE_FROM_CART_PREFIX, '');
+
+        console.log('EP-CHATBOT. Requesting remove ' + objectToRemove + ' from cart');
+
+        global.cortexInstance.cortexDeleteFromCart(objectToRemove).then((response) => {
+          setTimeout(function () {
+            sendMessageToUser(sender_psid, getMainMenuTemplate("The item has been removed from your cart. What else can I do for you?"), NO_MENU)
+          }, 1500);
+        }).catch((err) => console.log(err));
       }
-      requestOrdersMessage(sender_psid, orders);
-    }).catch(err => {
-      console.log(err);
-    });
-  } else if (messageID.startsWith(ORDER_PREFIX)) {
-    const orderToFetch = messageID.replace(ORDER_PREFIX, '');
-    requestFetchOrder(sender_psid, orderToFetch).then((response) => {
-      const orderResult = JSON.parse(response);
-
-      requestOrderMessage(sender_psid, orderResult);
-    }).catch((err) => console.log(err))
   }
 }
 
@@ -273,6 +320,7 @@ function sendTypingMessage(sender_psid, response, messageID) {
 
 // Get items in cart and trigger the required functions for none or multiple items, respectively
 function requestWelcomeMessage(sender_psid, itemsInCart) {
+
   const itemsInCartInt = getTotalItemsInCart(itemsInCart);
   // Sends Initial Welcome Message along with the message ID
   sendMessageToUser(sender_psid, getMessageWelcome(itemsInCartInt), WELCOME_MENU);
@@ -570,6 +618,24 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
       product.subtitle = 'Price: ' + productPrice + ' - Quantity: ' + productQuantity;
       product['image_url'] = productImages[i];
 
+      const buttons = [];
+
+      const removeButton = {};
+      const moveToWishlistButton = {};
+
+      removeButton.type = 'postback';
+      removeButton.title = 'Remove';
+      removeButton.payload = REMOVE_FROM_CART_PREFIX + productCode;
+
+      moveToWishlistButton.type = 'postback';
+      moveToWishlistButton.title = 'Move to wishlist';
+      moveToWishlistButton.payload = MOVE_WISHLIST_PREFIX + productCode;
+
+      buttons.push(removeButton);
+      buttons.push(moveToWishlistButton);
+
+      product.buttons = buttons;
+
       response.attachment.payload.elements.push(product);
     }
 
@@ -582,6 +648,24 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
 /* PART 6. MESSAGE TEMPLATES */
 
 /*****************************/
+
+function getLoginTemplate() {
+  return {
+    "attachment":{
+      "type":"template",
+      "payload":{
+        "template_type":"button",
+        "text":"Try the log in button!",
+        "buttons":[
+          {
+            "type": "account_link",
+            "url": "http://fb-vestri-spa.epdemos.com/cortex/oauth2/tokens"
+          }
+        ]
+      }
+    }
+  };
+}
 
 function getMainMenuTemplate(introText) {
   return {
@@ -783,27 +867,4 @@ function getAllOrdersTemplate(orders) {
   };
 
   return result;
-}
-
-// Deprecated
-// Sample order receipt used for reference only
-function getOrderReceipt() {
-  return {
-    "attachment": {
-      "type": "template",
-      "payload": {
-        "template_type": "receipt",
-        "recipient_name": "Emma Faust",
-        "order_number": "2002",
-        "currency": "EUR",
-        "payment_method": "Master Card XX9383",
-        "order_url": "http://google.com",
-        "timestamp": "September 6, 2018 4:51:54 PM",
-        "summary": {
-          "total_tax": "$11.44",
-          "total_cost": "$297.64"
-        }
-      }
-    }
-  };
 }
