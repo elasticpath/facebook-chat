@@ -261,6 +261,15 @@ function parseMessageFromUser(sender_psid, messageID) {
         global.cortexInstance.cortexAddToCart(objectToAddToCart, 1).then((response) => {
           sendMessageToUser(sender_psid, getMainMenuTemplate('The item has been added to your cart'), NO_MENU);
         }).catch((err) => console.error(err));
+      } else if (messageID.startsWith(REMOVE_FROM_WISHLIST_PREFIX)) {
+
+        const objectToRemoveFromWishlist = messageID.replace(REMOVE_FROM_WISHLIST_PREFIX, '');
+
+        console.log('EP-CHATBOT. Requesting remove ' + objectToRemoveFromWishlist + ' from wishlist');
+
+        global.cortexInstance.cortexDeleteFromWishlist(objectToRemoveFromWishlist).then((response) => {
+          sendMessageToUser(sender_psid, getMainMenuTemplate('The item has been removed from your wishlist'), NO_MENU);
+        }).catch((err) => console.error(err));
       }
   }
 }
