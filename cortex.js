@@ -270,6 +270,25 @@ Cortex.prototype.cortexAddToWishlist = function (sku) {
   });
 }
 
+Cortex.prototype.cortexAddToCart = function (sku, quantity) {
+  return new Promise((resolve, reject) => {
+    this.cortexGetItem(sku, 'addtocartform').then((data) => {
+      data = convertToObj(data);
+      if (data.hasOwnProperty('_addtocartform')) {
+        const wishlistActionLink = data['_addtocartform'][0].links[0].href;
+        this.cortexPost(wishlistActionLink, {'quantity': quantity}).then((data) => {
+          resolve(data);
+        }).catch((error) => {
+          reject(error);
+        });
+      }
+    }).catch((error) => {
+      console.log(error);
+    });
+
+  });
+}
+
 // TODO: Does not work with configurable items
 /**
  * deletes the current item from wishlist.

@@ -52,7 +52,9 @@ const WISHLIST_MENU = 'wishlist';
 
 const ORDER_PREFIX = 'order:';
 const MOVE_WISHLIST_PREFIX = 'move_wishlist:';
-const REMOVE_FROM_CART_PREFIX = 'remove:';
+const ADD_TO_CART_PREFIX = 'add_cart:';
+const REMOVE_FROM_CART_PREFIX = 'remove_cart:';
+const REMOVE_FROM_WISHLIST_PREFIX = 'remove_wishlist:';
 
 const
   request = require('request'),
@@ -159,8 +161,7 @@ function getCortexInstance(sender_psid, option) {
 // Delegate each input request to required function
 function parseMessageFromUser(sender_psid, messageID) {
 
-  console.log('message ID = ' + messageID);
-  switch(messageID) {
+  switch (messageID) {
     case WELCOME_MENU:
       console.log('EP-CHATBOT. Requesting welcome message');
 
@@ -251,6 +252,15 @@ function parseMessageFromUser(sender_psid, messageID) {
             sendMessageToUser(sender_psid, getMainMenuTemplate("The item has been removed from your cart. What else can I do for you?"), NO_MENU)
           }, 1500);
         }).catch((err) => console.log(err));
+      } else if (messageID.startsWith(ADD_TO_CART_PREFIX)) {
+
+        const objectToAddToCart = messageID.replace(ADD_TO_CART_PREFIX, '');
+
+        console.log('EP-CHATBOT. Requesting add ' + objectToAddToCart + ' to cart');
+
+        global.cortexInstance.cortexAddToCart(objectToAddToCart, 1).then((response) => {
+          sendMessageToUser(sender_psid, getMainMenuTemplate('The item has been added to your cart'), NO_MENU);
+        }).catch((err) => console.error(err));
       }
   }
 }
@@ -452,33 +462,14 @@ function getTotalItemsInCart(itemsInCart) {
 // Get items from the wishlist
 // TODO Detach  message text from logic. Ideal to move messages to templates
 function requestGetWishList(sender_psid, itemsInWishlist) {
-  const wishListArray = [];
-  const keys = Object.keys(itemsInWishlist);
-
-  // Get and parse all items in the wishlist
-  for (let i = 0; i < keys.length; i++) {
-    const productsArray = [];
-    const productCode = itemsInWishlist[keys[i]].wishlistItem.code;
-    const productName = itemsInWishlist[keys[i]].wishlistItem.definition.displayName;
-    const productPriceAmount = itemsInWishlist[keys[i]].wishlistItem.price.purchasePrice[0].amount;
-
-    productsArray.push(productCode, productName, productPriceAmount);
-    wishListArray.push(productsArray);
-  }
   // Generate list of products
-  if (wishListArray.length > 0) {
-    let products = "";
-    for (let i = 0; i < wishListArray.length; i++) {
-      if (i > 0) {
-        products = products + "\n - ";
-      }
-      products = products + wishListArray[i][1];
-    }
-    // Send message with items in the wishlist
-    sendMessageToUser(sender_psid, getMainMenuTemplate("The following items are in your wishlist: \n - " + products + "\n\n What else I can do for you?"), 6);
+  if (Object.keys(itemsInWishlist).length > 0) {
+    const response = {};
+    sendMessageToUser(sender_psid, {'text': 'Here is your wishlist:'}, NO_MENU);
+    sendMessageWishlist(itemsInWishlist, sender_psid);
   } else {
     // Send message with no items in the wishlist
-    sendMessageToUser(sender_psid, getMainMenuTemplate("Your wishlist is empty. What else I can do for you?"), 6);
+    sendMessageToUser(sender_psid, getMainMenuTemplate("Your wishlist is empty. What else I can do for you?"), NO_MENU);
   }
 }
 
@@ -585,8 +576,6 @@ function getMessageWelcome(itemsInCartInt) {
 // Gets items in shopping cart and parses response
 // TODO Detach  message text from logic. Ideal to move messages to templates
 function sendMessageShoppingCart(itemsInCart, sender_psid) {
-  console.log("EP-CHATBOT. Items in shopping cart", itemsInCart);
-
   const promises = [];
 
   const keys = Object.keys(itemsInCart);
@@ -651,6 +640,70 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
   }).catch((err) => console.log(err));
 }
 
+function sendMessageWishlist(itemsInWishlist, sender_psid) {
+  const promises = [];
+
+  const keys = Object.keys(itemsInWishlist);
+
+  for (let i = 0; i < keys.length; i++) {
+    promises.push(getImageURL(itemsInWishlist[keys[i]].wishlistItem.code));
+  }
+
+  Promise.all(promises).then((productImages) => {
+
+    const response = {};
+
+    response.attachment = {};
+    response.attachment.payload = {};
+    response.attachment.payload.elements = [];
+    response.attachment.type = 'template';
+    response.attachment.payload['template_type'] = 'generic';
+
+    orderArray = [];
+
+    for (let i = 0; i < keys.length; i++) {
+
+      const productsArray = [];
+      const productCode = itemsInWishlist[keys[i]].wishlistItem.code;
+      const productName = itemsInWishlist[keys[i]].wishlistItem.definition.displayName;
+      const productPrice = itemsInWishlist[keys[i]].wishlistItem.price.purchasePrice[0].display;
+      const productPriceAmount = itemsInWishlist[keys[i]].wishlistItem.price.purchasePrice[0].amount;
+
+      productsArray.push(productCode, productName, productPriceAmount, productImages[i]);
+      orderArray.push(productsArray);
+
+      let product = {};
+
+      product.title = productName;
+      product.subtitle = 'Price: ' + productPrice;
+      product['image_url'] = productImages[i];
+
+      const buttons = [];
+
+      const removeButton = {};
+      const moveToWishlistButton = {};
+
+      removeButton.type = 'postback';
+      removeButton.title = 'Remove';
+      removeButton.payload = REMOVE_FROM_WISHLIST_PREFIX + productCode;
+
+      moveToWishlistButton.type = 'postback';
+      moveToWishlistButton.title = 'Add to cart';
+      moveToWishlistButton.payload = ADD_TO_CART_PREFIX + productCode;
+
+      buttons.push(removeButton);
+      buttons.push(moveToWishlistButton);
+
+      product.buttons = buttons;
+
+      response.attachment.payload.elements.push(product);
+    }
+
+    // Sends Shopping Cart Information to the User
+    sendMessageToUser(sender_psid, response, NO_MENU);
+  }).catch((err) => console.log(err));
+}
+
 /*****************************/
 /* PART 6. MESSAGE TEMPLATES */
 
@@ -658,12 +711,12 @@ function sendMessageShoppingCart(itemsInCart, sender_psid) {
 
 function getLoginTemplate() {
   return {
-    "attachment":{
-      "type":"template",
-      "payload":{
-        "template_type":"button",
-        "text":"Try the log in button!",
-        "buttons":[
+    "attachment": {
+      "type": "template",
+      "payload": {
+        "template_type": "button",
+        "text": "Try the log in button!",
+        "buttons": [
           {
             "type": "account_link",
             "url": "http://fb-vestri-spa.epdemos.com/cortex/oauth2/tokens"
