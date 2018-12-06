@@ -1,15 +1,34 @@
 /**
+ * Copyright © 2018 Elastic Path Software Inc. All rights reserved.
+ *
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this license. If not, see
+ *
+ *     https://www.gnu.org/licenses/
+ *
+ *
+ */
+
+/**
  * Product domain object.
  */
 let Product     = function() {};
 module.exports  = Product;
 
-
-
 /**
  * Builds a Product domain object from a Cortex JSON response (either String, or
  * pre-parsed JSON). Gracefully handles missing zoom data from all elements.
- * 
+ *
  * NOTE: Does NOT guarantee that any elements are present.
  */
 Product.fromCortexJson = function(json) {
@@ -29,9 +48,6 @@ Product.fromCortexJson = function(json) {
     return product;
 }
 
-
-
-
 /**
  * Returns true if the availability is set to 'AVAILABLE'
  * @return {boolean} True if availability === available.
@@ -39,11 +55,6 @@ Product.fromCortexJson = function(json) {
 Product.prototype.isAvailable = function() {
     return this.availability === 'AVAILABLE'
 };
-
-
-
-
-
 
 /*
  * ***********************************************
@@ -58,8 +69,6 @@ function findUriFromJson(data) {
     }
 }
 
-
-
 function findProductCode(itemJson) {
     const data = convertToObj(itemJson);
     let   sku;
@@ -70,8 +79,6 @@ function findProductCode(itemJson) {
     }
     return sku;
 };
-
-
 
 function findProductDefinition(itemJson)
 {
@@ -91,8 +98,6 @@ function findProductDefinition(itemJson)
     return definition;
 };
 
-
-
 function findProductPrice(data) {
     let priceObj = {};
 
@@ -105,12 +110,10 @@ function findProductPrice(data) {
     try {
         priceObj.listPrice     = data._price[0]['list-price'];
     } catch (err) {
-        // Swallow errors. 
+        // Swallow errors.
     }
     return priceObj;
 };
-
-
 
 function findProductAvailability(data) {
     // TODO: Implement the product availibility...
@@ -130,9 +133,6 @@ function findAvailibilityFromArray(data) {
         }
     }
 };
-
-
-
 
 function findProductBundles(data) {
     data = convertToObj(data);
@@ -176,10 +176,6 @@ function findStandaloneItemFromLinks(links) {
     }
     return null;
 };
-
-
-
-
 
 function convertToObj(data) {
     if (typeof data === 'string') {
