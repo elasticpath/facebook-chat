@@ -85,6 +85,10 @@ function createCortexInstance(username, password, baseUrl, scope) {
     });
 }
 
+function createInstanceWithToken(token, baseUrl, scope) {
+  return new Cortex(baseUrl, scope, token);
+}
+
 Cortex.prototype.cortexFindLink = function (data, rel) {
   for (var i = 0; i < data.links.length; i++) {
     var link = data.links[i];
@@ -684,3 +688,4 @@ function findInstanceIdFromHref(href) {
 
 module.exports.Cortex = Cortex;
 module.exports.createCortexInstance = createCortexInstance;
+module.exports.createInstanceWithToken = createInstanceWithToken;

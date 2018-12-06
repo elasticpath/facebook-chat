@@ -10,19 +10,6 @@
  *   Open Recommended Product based on Cart/Wishlist
  */
 
-/***********************/
-/* INTRO. GENERAL INFO */
-/***********************/
-
-//messageIDs:
-//1: Welcome Message
-//2: Shopping Cart Message
-//3: Checkout Prompt Message
-//4: Next Action Prompt Message
-//5: Didn't checkout. Moved items to the cart
-//6: Wish List Message
-//7: Main Menu
-
 /*************************/
 /* PART 1. INITIAL SETUP */
 /*************************/
@@ -31,8 +18,6 @@ const VERIFY_TOKEN = '<Randomly_Generated_Token_To_Provide_To_Facebook>';
 const PAGE_ACCESS_TOKEN = '<Token_Provided_By_Facebook>';
 
 const PORT = 3000;
-const EP_USER = 'myuser@email.com';
-const EP_PASSWORD = 'password';
 const EP_SERVER = 'http://<Customer>.epdemos.com/cortex';
 const EP_SCOPE = '<Customer_Store>';
 const EP_IMAGES = 'https://s3-us-west-2.amazonaws.com/ep-demo-images/<Customer>/';
@@ -55,6 +40,42 @@ const MOVE_WISHLIST_PREFIX = 'move_wishlist:';
 const ADD_TO_CART_PREFIX = 'add_cart:';
 const REMOVE_FROM_CART_PREFIX = 'remove_cart:';
 const REMOVE_FROM_WISHLIST_PREFIX = 'remove_wishlist:';
+
+/* NLP */
+
+const ADD_TO_CART_VOCABULARY = ['add', 'get', 'buy', 'cart', 'purchase', 'grab', 'pick', 'i want'];
+
+const ADD_COUPON_VOCABULARY = [
+  {
+    'beginning': 'i have a',
+    'nouns': ['coupon', 'promotion', 'sale', 'deal', 'promo']
+  },
+  {
+    'beginning': 'apply',
+    'verbs': ['coupon', 'promotion', 'deal', 'promo', 'sale', '']
+  }
+];
+
+const SEARCH_VOCABULARY = [
+  {
+    'beginning': 'i am',
+    'verbs': ['searching for', 'looking for']
+  },
+  {
+    'beginning': 'i',
+    'verbs': ['search for', 'look for', 'want', 'would like']
+  },
+  {
+    'beginning': 'search',
+    'verbs': ['for', '']
+  },
+  {
+    'beginning': 'look for',
+    'verbs': ['']
+  }
+];
+
+let authUsers = {};
 
 const
   request = require('request'),
@@ -93,22 +114,29 @@ app.get('/webhook', (req, res) => {
 
 // Accept POST requests at /webhook endpoint
 app.post('/webhook', (req, res) => {
-  // Parse the request body from the POST
   const body = req.body;
-  // Check the webhook event is from a Page subscription
+  console.log('body = ' + JSON.stringify(body));
   if (body.object === 'page') {
-    // Iterate over each entry - there may be multiple if batched
     body.entry.forEach(function (entry) {
-      // Gets the body of the webhook event
       const webhook_event = entry.messaging[0];
-      // Get the sender PSID.
-      // TODO: Use info from PSID to support authentication with Elastic Path and welcome user by name
       const sender_psid = webhook_event.sender.id;
-      // Pass the event to the appropriate handler function: Message Handler or Postback Handler
-      if (webhook_event.message) {
-        handleMessage(sender_psid, webhook_event.message);
-      } else if (webhook_event.postback) {
-        handlePostback(sender_psid, webhook_event.postback);
+      if (!authUsers[sender_psid]) {
+        if (webhook_event.account_linking) {
+          authUsers[sender_psid] = webhook_event.account_linking.authorization_code;
+          global.cortexInstance = Cortex.createInstanceWithToken(webhook_event.account_linking.authorization_code, EP_SERVER, EP_SCOPE);
+          sendMessageToUser(sender_psid, {'text': 'You are successfully logged in!'}, NO_MENU);
+        } else {
+          sendMessageToUser(sender_psid, getLoginTemplate(), NO_MENU);
+        }
+      } else {
+        console.log('EP-CHATBOT. Cortex Client instance created successfuly');
+        if (webhook_event.message && webhook_event.message.text) {
+          if (!handleNLP(sender_psid, webhook_event.message.text)) {
+            parseMessageFromUser(sender_psid, WELCOME_MENU);
+          }
+        } else if (webhook_event.postback) {
+          handlePostback(sender_psid, webhook_event.postback);
+        }
       }
     });
     // Return a '200 OK' response to all events
@@ -124,38 +152,12 @@ app.post('/webhook', (req, res) => {
 /* PART 3. MESSAGE HANDLERS AND DELEGATORS */
 /*******************************************/
 
-// Handle initial message events
-function handleMessage(sender_psid, received_message) {
-  getCortexInstance(sender_psid, 1);
-}
 
 // Handle postback events
 function handlePostback(sender_psid, received_postback) {
   console.log('EP-CHATBOT. Facebook postback event received');
 
-  if (typeof global.cortexInstance !== 'undefined' && global.cortexInstance) {
-
-    console.log('EP-CHATBOT. Cortex Client instance exists');
-
-    parseMessageFromUser(sender_psid, received_postback.payload);
-  } else {
-
-    console.log('EP-CHATBOT. Cortex Client instance does not exist, requesting it');
-
-    getCortexInstance(sender_psid, received_postback.payload);
-  }
-}
-
-// Get a new Cortex Instance and calls the next meessage
-function getCortexInstance(sender_psid, option) {
-  Cortex.createCortexInstance(EP_USER, EP_PASSWORD, EP_SERVER, EP_SCOPE).then((cortex) => {
-
-    global.cortexInstance = cortex;
-
-    console.log('EP-CHATBOT. Cortex Client instance created successfuly');
-
-    parseMessageFromUser(sender_psid, option)
-  }).catch((err) => console.log(err))
+  parseMessageFromUser(sender_psid, received_postback.payload);
 }
 
 // Delegate each input request to required function
@@ -202,16 +204,23 @@ function parseMessageFromUser(sender_psid, messageID) {
 
       requestShowPastOrders(sender_psid).then(data => {
         const jsonData = JSON.parse(data);
-        const purchases = jsonData['_defaultprofile'][0]['_purchases'][0]['_element'];
-        const orders = [];
+        if (jsonData['_defaultprofile'] !== null && jsonData['_defaultprofile'] !== undefined) {
+          const purchases = jsonData['_defaultprofile'][0]['_purchases'][0]['_element'];
+          const orders = [];
 
-        for (let i = 0; i < purchases.length; i++) {
-          orders.push(purchases[i]['purchase-number']);
+          for (let i = 0; i < purchases.length; i++) {
+            orders.push(purchases[i]['purchase-number']);
+          }
+          requestOrdersMessage(sender_psid, orders);
+        } else {
+          sendMessageToUser(sender_psid, {'text': 'You do not have any passed orders'}, MAIN_MENU);
         }
-        requestOrdersMessage(sender_psid, orders);
       }).catch(err => {
         console.log(err);
       });
+
+      break;
+    case NO_MENU:
 
       break;
     default:
@@ -482,6 +491,18 @@ function requestGetWishList(sender_psid, itemsInWishlist) {
   }
 }
 
+function requestSearchResults(sender_psid, results) {
+  // Generate list of products
+  if (results.length > 0) {
+    const response = {};
+    sendMessageToUser(sender_psid, {'text': 'Here is what I found for you:'}, NO_MENU);
+    sendMessageSearchResults(results, sender_psid);
+  } else {
+    // Send message with no items in the wishlist
+    sendMessageToUser(sender_psid, getMainMenuTemplate("I did not find any results. What else I can do for you?"), NO_MENU);
+  }
+}
+
 // Checkout in Elastic Path
 // TODO Detach  message text from logic. Ideal to move messages to templates
 function requestCheckout(sender_psid, checkoutResponse) {
@@ -713,6 +734,66 @@ function sendMessageWishlist(itemsInWishlist, sender_psid) {
   }).catch((err) => console.log(err));
 }
 
+function sendMessageSearchResults(results, sender_psid) {
+  const promises = [];
+
+  if (results.length > 10) {
+    results.length = 10;
+  }
+
+  for (let i = 0; i < results.length; i++) {
+    promises.push(getImageURL(results[i].code));
+  }
+
+  Promise.all(promises).then((productImages) => {
+
+    const response = {};
+
+    response.attachment = {};
+    response.attachment.payload = {};
+    response.attachment.payload.elements = [];
+    response.attachment.type = 'template';
+    response.attachment.payload['template_type'] = 'generic';
+
+    orderArray = [];
+
+    for (let i = 0; i < results.length; i++) {
+
+      const productsArray = [];
+      const productCode = results[i].code;
+      const productName = results[i].definition.displayName;
+      const productPrice = results[i].price.purchasePrice[0].display;
+      const productPriceAmount = results[i].price.purchasePrice[0].amount;
+
+      productsArray.push(productCode, productName, productPriceAmount, productImages[i]);
+      orderArray.push(productsArray);
+
+      let product = {};
+
+      product.title = productName;
+      product.subtitle = 'Price: ' + productPrice;
+      product['image_url'] = productImages[i];
+
+      const buttons = [];
+
+      const moveToWishlistButton = {};
+
+      moveToWishlistButton.type = 'postback';
+      moveToWishlistButton.title = 'Add to cart';
+      moveToWishlistButton.payload = ADD_TO_CART_PREFIX + productCode;
+
+      buttons.push(moveToWishlistButton);
+
+      product.buttons = buttons;
+
+      response.attachment.payload.elements.push(product);
+    }
+
+    // Sends Shopping Cart Information to the User
+    sendMessageToUser(sender_psid, response, NO_MENU);
+  }).catch((err) => console.log(err));
+}
+
 /*****************************/
 /* PART 6. MESSAGE TEMPLATES */
 
@@ -724,11 +805,11 @@ function getLoginTemplate() {
       "type": "template",
       "payload": {
         "template_type": "button",
-        "text": "Try the log in button!",
+        "text": "Please log in by clicking on the link below",
         "buttons": [
           {
             "type": "account_link",
-            "url": "http://fb-vestri-spa.epdemos.com/cortex/oauth2/tokens"
+            "url": "<AUTHENTICATION_LOGIN_URL>"
           }
         ]
       }
@@ -936,4 +1017,90 @@ function getAllOrdersTemplate(orders) {
   };
 
   return result;
+}
+
+/* NLP */
+
+/*
+const ADD_TO_CART_VOCABULARY = ['add', 'get', 'buy', 'cart', 'purchase', 'grab', 'pick', 'i want'];
+*/
+
+function handleNLP(sender_psid, message) {
+  let keywordsSearch = isSearch(message);
+
+  if (keywordsSearch !== null && keywordsSearch !== undefined && keywordsSearch !== '') {
+    sendMessageToUser(sender_psid, {'text': 'Let me search items with keywords: ' + keywordsSearch.toString()}, NO_MENU);
+    let keywords = keywordsSearch.join(' ');
+    global.cortexInstance.getItemsByKeyword(keywords).then((response) => {
+      requestSearchResults(sender_psid, response);
+    }).catch((err) => console.error(err));
+    return true;
+  }
+
+  let coupon = isApplyPromotion(message);
+  if (coupon !== null && coupon !== undefined && coupon !== '') {
+    sendMessageToUser(sender_psid, {'text': 'Let me apply coupon: ' + coupon}, NO_MENU);
+    global.cortexInstance.getCouponCodeForm().then((response) => {
+      global.cortexInstance.applyCoupon(response, coupon).then((res) => {
+        sendMessageToUser(sender_psid, {'text': 'I successfully applied your coupon: ' + coupon}, NO_MENU);
+      }).catch((err) => {
+        console.log(err);
+        sendMessageToUser(sender_psid, {'text': 'The coupon ' + coupon + ' does not exist or is not valid'}, NO_MENU);
+      });
+    }).catch((err) => {
+      console.log(err);
+      sendMessageToUser(sender_psid, {'text': 'The coupon ' + coupon + ' does not exist or is not valid'}, NO_MENU);
+    });
+    return true;
+  }
+
+  return false;
+}
+
+function isSearch(message) {
+  for (let i = 0; i < SEARCH_VOCABULARY.length; i++) {
+    if (message.toUpperCase().startsWith(SEARCH_VOCABULARY[i].beginning.toUpperCase())) {
+      for (let j = 0; j < SEARCH_VOCABULARY[i].verbs.length; j++) {
+        const pattern = new RegExp(SEARCH_VOCABULARY[i].beginning + ' ' + SEARCH_VOCABULARY[i].verbs[j], 'ig');
+        if (pattern.test(message)) {
+          let keywords = '';
+          if (SEARCH_VOCABULARY[i].verbs[j] !== '') {
+            let patternReplace = new RegExp(SEARCH_VOCABULARY[i].beginning + ' ' + SEARCH_VOCABULARY[i].verbs[j] + ' ', 'ig');
+            keywords = message.replace(patternReplace, '');
+          } else {
+            let patternReplace = new RegExp(SEARCH_VOCABULARY[i].beginning + ' ', 'ig');
+            keywords = message.replace(patternReplace, '');
+          }
+          keywords = keywords.replace(/(\b(\w{1,3})\b(\s|$))/g, '').split(' ');
+          return keywords;
+        }
+      }
+    }
+  }
+}
+
+function isAddToCart(message) {
+
+}
+
+function isApplyPromotion(message) {
+  for (let i = 0; i < ADD_COUPON_VOCABULARY.length; i++) {
+    if (message.toUpperCase().startsWith(ADD_COUPON_VOCABULARY[i].beginning.toUpperCase())) {
+      for (let j = 0; j < ADD_COUPON_VOCABULARY[i].verbs.length; j++) {
+        const pattern = new RegExp(ADD_COUPON_VOCABULARY[i].beginning + ' ' + ADD_COUPON_VOCABULARY[i].verbs[j], 'ig');
+        if (pattern.test(message)) {
+          let code = '';
+          if (ADD_COUPON_VOCABULARY[i].verbs[j] !== '') {
+            let patternReplace = new RegExp(ADD_COUPON_VOCABULARY[i].beginning + ' ' + ADD_COUPON_VOCABULARY[i].verbs[j] + ' ', 'ig');
+            code = message.replace(patternReplace, '');
+          } else {
+            let patternReplace = new RegExp(ADD_COUPON_VOCABULARY[i].beginning + ' ', 'ig');
+            code = message.replace(patternReplace, '');
+          }
+          code = code.replace(/(\b(\w{1,3})\b(\s|$))/g, '').split(' ');
+          return code[0];
+        }
+      }
+    }
+  }
 }
