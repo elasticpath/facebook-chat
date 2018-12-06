@@ -124,6 +124,7 @@ function findProductAvailability(data) {
     }
     return availabilityState;
 };
+
 function findAvailibilityFromArray(data) {
     const availabilityArray = data['_availability'];
 
@@ -147,6 +148,7 @@ function findProductBundles(data) {
         return null;
     }
 };
+
 // We need a promise for this call here...
 function createBundleArray(bundles) {
     return new Promise((resolve, reject) => {
@@ -167,6 +169,7 @@ function createBundleArray(bundles) {
         resolve(bundleArray);
     });
 };
+
 function findStandaloneItemFromLinks(links) {
     for (let i = 0; i < links.length; i++) {
         const currentLink = links[i];
