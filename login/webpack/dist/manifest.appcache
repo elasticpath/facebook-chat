@@ -1,0 +1,25 @@
+CACHE MANIFEST
+# 38edc705d9385b2ab152
+
+/fonts/glyphicons-halflings-regular.eot
+/fonts/fa-brands-400.eot
+/fonts/glyphicons-halflings-regular.woff
+/fonts/glyphicons-halflings-regular.ttf
+/fonts/fa-brands-400.woff2
+/fonts/fa-brands-400.woff
+/fonts/fa-brands-400.ttf
+/app.js
+/vendors~app.js
+/runtime.js
+/index.html
+/precache-manifest.663e1bf487c70e0de33584e3acfd707c.js
+/service-worker.js
+
+CACHE:
+*
+
+NETWORK:
+*
+
+SETTINGS:
+prefer-online
