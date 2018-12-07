@@ -24,7 +24,6 @@ import {
   BrowserRouter as Router, Switch, withRouter, Route,
 } from 'react-router-dom';
 import router from './routes';
-import withAnalytics from './utils/Analytics';
 
 import './App.less';
 
@@ -39,7 +38,7 @@ const Root = () => [
   </div>,
 ];
 
-const App = withRouter(withAnalytics(Root));
+const App = withRouter(Root);
 const AppWithRouter = () => (
   <Router basename="/auth/">
     <App />
