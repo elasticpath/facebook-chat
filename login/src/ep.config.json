@@ -1,0 +1,17 @@
+{
+  "cortexApi": {
+    "path": "/cortex",
+    "scope": "vestri",
+    "pathForProxy": "http://fb-vestri-spa.epdemos.com"
+  },
+  "supportedLocales": [
+    {
+      "value": "en-CA",
+      "name": "English"
+    },
+    {
+      "value": "fr-FR",
+      "name": "French"
+    }
+  ]
+}
