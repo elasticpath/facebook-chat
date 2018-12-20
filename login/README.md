@@ -1,44 +1,50 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Reference Facebook Chatbot - Login Server Quick Start Guide
 
-## Available Scripts
+## Table of Contents
 
-In the project directory, you can run:
+  * Reference Facebook Chatbot - Login Server
+      * [Documentation Introduction](#documentation-introduction)
+  * [Setting up the Login Server](#setting-up-the-login-server)
+      * [Configuration Parameter Descriptions](#configuration-parameter-descriptions)
+      * [Setting up a Development Environment](#setting-up-a-development-environment)
+      * [Setting up a Production Environment](#setting-up-a-production-environment)
+  * [Terms And Conditions](#terms-and-conditions)
 
-### `npm start`
+### Documentation Introduction
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+This document provides guidelines to setup and configure the Reference Facebook Chatbot's Login Server,to server as the authentication bridge between the Reference Facebook Chatbot and Facebook's Messenger services.
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+## Setting up the Login Server
 
-### `npm test`
+### Configuration Parameter Descriptions
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+You must configure the following parameters in the `./src/ep.config.json` file:
 
-### `npm run build`
+|  Parameter| Importance|Type|Description|
+|--|--|--|--|
+|`cortexApi.path`| Required| String| The URL, which is composed of the hostname and port, to access Cortex. By default, a web proxy is configured in the [Webpack](https://webpack.js.org/) configuration of the project. For local development, set this value to `/cortex` to redirect Cortex calls to the local proxy.|
+|`cortexApi.scope`| Required| String| Name of the store from which Cortex retrieves data.|
+|`cortexApi.pathForProxy`|Required|String| The path to which the [Webpack](https://webpack.js.org/) proxy routes the Cortex calls from the storefront. This value is a URL that consists of hostname and port of a running instance of Cortex. Leave this field blank to disable proxy.|
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Setting up a Development Environment
 
+1. Ensure you have read through the documentation [here](https://github.com/elasticpath/facebook-chat/blob/master/README.md).
+2. Run the `cd login` command.
+3. To install dependencies, run the `npm install` command.
+4. Configure the `./src/ep.config.json` file as required for the environment.<br/> For more information, see the [Configuration Parameter Descriptions](#configuration-parameter-descriptions) section.
+5. To start the server in development mode, run the `npm start` command.
+6. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
+
+### Setting up a Production Environment
+1. Clone or pull the `react-pwa-reference-storefront` repository to your directory.
+2. Navigate to the `react-pwa-reference-storefront` directory.<br>
+3. To build the application in production mode, run the `npm run build` command.
+This Builds the app for production to the `build` folder.<br>
+It correctly bundles React in production mode and optimizes the build for the best performance.<br>
 The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+4. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Terms And Conditions
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Any changes to this project must be reviewed and approved by the repository owner. For more information about contributing, see the [Contribution Guide](https://github.com/elasticpath/facebook-chat/blob/master/.github/CONTRIBUTING.md).
+- For more information about the license, see [GPLv3 License](https://github.com/elasticpath/facebook-chat/blob/master/LICENSE).

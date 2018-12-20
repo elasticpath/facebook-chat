@@ -1,23 +1,20 @@
-# User Guide
-  
-* [Code Base](#code)
-* [Environment File](#environment)
-* [Running the application](#running)
-* [Configuring the Facebook API](#configuration)
-* [Deploy the application](#deployment)
-* [Making tests](#testing)
-* [Appendices](#appendices)
+# Reference Facebook Chatbot - Chatbot Server Quick Start Guide
 
-## <a name="code">Code Base</a>
+## Table of Contents
 
-The code base is clonable from this repository: <a href="https://github.elasticpath.net/sales-demos/facebook-chatbot">Facebook Chatbot</a>.
+  * Reference Facebook Chatbot - Chatbot Server
+  * [Setting up the Chatbot Server](#setting-up-the-chatbot-server)
+    * [Environment File](#environment-file)
+    * [Running the application](#running-the-application)
+    * [Configuring the Facebook API](#configuring-the-facebook-api)
+    * [Deploy the application](#deploy-the-application)
+    * [Making tests](#making-tests)
+  * [Appendices](#appendices)
+  * [Terms And Conditions](#terms-and-conditions)
 
-If you plan to add features to the chatbot, then create a branch `feature/<Jira_Ticket>` where `Jira_Ticket` is the ID of the JIRA ticket you are working on. When your work is done, create a Pull Request and request reviews from <a href="http://github.elasticpath.net" target="_blank">Andres</a> or <a href="http://github.elasticpath.net/cpinelli" target="_blank">Christophe</a>.
+## Setting up the Chatbot Server
 
-If you are creating a chatbot for a demo, then create a branch demo/<Customer> where <Customer> is the name of the customer you are making a demo for.
-
-
-## <a name="environment">Environment File</a>
+### Environment File
 
 The application requires some information that can be stored either in a environment file (.env) or as constants directly in the code.
 
@@ -41,20 +38,23 @@ const EP_SCOPE='<Customer_Store>';
 const EP_IMAGES='https://s3-us-west-2.amazonaws.com/ep-demo-images/<Customer>/';
 ```
 
-## <a name="running">Running the application</a>
+### Running the application
 
-When the development isdone, push your branch on Github, use `ssh` to connect to the VM.
-From there, clone the Github repository and checkout your branch.
-Run `npm install` to download the required dependencies, then run `node app.js` to run the application.
+1. Ensure you have read through the documentation [here](https://github.com/elasticpath/facebook-chat/blob/master/README.md).
+2. Run the `cd chatbot` command.
+3. To install dependencies, run the `npm install` command.
+4. To run the application, run the `node app.js` command.
+4. Configure the `./src/ep.config.json` file as required for the environment.<br/> For more information, see the [Configuration Parameter Descriptions](#configuration-parameter-descriptions) section.
+5. To start the server in development mode, run the `npm start` command.
 At that point, you should get the following displayed:
 
 ![Running the application](./FacebookChatbotGuide/app-running.png)
 
 Use `<Ctrl>-C` to stop the application
 
-## <a name="configuration">Configuring the Facebook API</a>
+### Configuring the Facebook API
 
-In this part, I am going to assume that you already created a Facebook business page. If you did not, please check out the appendices first.
+In this part, we are going to assume that you already created a Facebook business page. If you did not, please review the [appendices](#appendices) first.
 
 Go to <a href="https://developers.facebook.com">Facebook for developer</a> and log in with the page admin credentials. If you have multiple pages on this account, pick the one that you are creating the chatbot for.
 
@@ -77,7 +77,7 @@ You should get a notification from your business page. Click accept to become a 
 
 The Facebook API is now configured and the tester is able to test the chatbot.
 
-## <a name="deployment">Deployment</a>
+### Deploy the application
 
 For the final configuration step, it is required first to deploy the application.
 
@@ -120,7 +120,7 @@ If you get a 403 error, then you have a configuration issue in your .env file or
 To debug it, run `forever stop app.js`, then in the first method `app.get('/webhook', (req, res) => {...` add logs to check out the values of `token` that should be your `VERIFY_TOKEN` and `mode` that should be `subscribe`.
 
 
-## <a name="testing">Making tests</a>
+### Making tests
 
 Go to Facebook and log in as the tester (i.e. the App tester).
 Head to the page to test and click `Send Message` on the top on the right.
@@ -146,14 +146,14 @@ You can then click on the order to have a new component popping up:
 At this point the chatbot is up and running!
 
 
-## <a name="appendices">Appendices</a>
+## Appendices
 
 To create a Facebook business page, log in as your page admin account.
 In the sidebar, click Pages, just in the `Explore` block.
 Click `Create Page` on the top right corner and click `Business or Brand`, add a page name and a category (Clothing, Brand, Computers...)
 Click continue, if this is your first page, it will be asked to add a cover photo and a profile picture. Skip this part as it does not matter.
 
+## Terms And Conditions
 
-Appendices to be continued...
-
-
+- Any changes to this project must be reviewed and approved by the repository owner. For more information about contributing, see the [Contribution Guide](https://github.com/elasticpath/facebook-chat/blob/master/.github/CONTRIBUTING.md).
+- For more information about the license, see [GPLv3 License](https://github.com/elasticpath/facebook-chat/blob/master/LICENSE).
