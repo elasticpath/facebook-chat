@@ -53,6 +53,7 @@ const REMOVE_FROM_WISHLIST_PREFIX = 'remove_wishlist:';
 /* NLP */
 
 const ADD_TO_CART_VOCABULARY = ['add', 'get', 'buy', 'cart', 'purchase', 'grab', 'pick', 'i want'];
+const ADD_TO_CART_QUANTITY = ['x', 'time', 'times', ''];
 
 const ADD_COUPON_VOCABULARY = [
   {
@@ -1063,6 +1064,12 @@ function handleNLP(sender_psid, message) {
     return true;
   }
 
+  let keywordsQuantity = isAddToCart(message);
+  if (keywordsQuantity !== null && keywordsQuantity !== undefined && keywordsQuantity !== {}) {
+    const quantity = keywordsQuantity.quantity;
+    const keywords = keywordsQuantity.keywords;
+  }
+
   return false;
 }
 
@@ -1088,8 +1095,33 @@ function isSearch(message) {
   }
 }
 
+/* 
+  const ADD_TO_CART_VOCABULARY = ['add', 'get', 'buy', 'cart', 'purchase', 'grab', 'pick', 'i want'];
+  const ADD_TO_CART_QUANTITY = ['x', 'time', 'times']; 
+*/
 function isAddToCart(message) {
+  for (let i = 0; i < ADD_TO_CART_VOCABULARY.length; i++) {
+    if (message.toUpperCase().startsWith(ADD_TO_CART_VOCABULARY[i].toUpperCase())) {
+      for (let j = 0; j < ADD_TO_CART_QUANTITY.length; j++) {
+        // example: add 5 vestri golf bag
+        const pattern1 = ADD_TO_CART_VOCABULARY[i] + ' ' + '([0-9]*)' + ADD_TO_CART_QUANTITY[j] + '([a-zA-Z *]*)';
+        // example add vestri golf bag 5 times
+        const pattern2 = ADD_TO_CART_VOCABULARY[i] + ' ' + '([a-zA-Z *]*)' + '([0-9]*)' + ADD_TO_CART_QUANTITY[j];
+        const regex1 = new RegExp(pattern1, 'ig');
+        const regex2 = new RegExp(pattern2, 'ig');
 
+        let match = '';
+        
+        if (regex1.test(message)) {
+          match = regex1.exec(message);
+        } else if (regex2.test(message)) {
+          match = regex2.exec(message);
+        }
+
+        console.log('match = ' + match);
+      }
+    }
+  }
 }
 
 function isApplyPromotion(message) {
