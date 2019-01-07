@@ -11,7 +11,7 @@
 
   * Device: _____
   * OS version: _____
-  * Storefront pulled version: _____
+  * Pulled version: _____
   * Node version: _____
   * Docker version: _____
   * Docker Compose version: _____

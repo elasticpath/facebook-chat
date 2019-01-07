@@ -36,13 +36,16 @@ You must configure the following parameters in the `./src/ep.config.json` file:
 6. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
 
 ### Setting up a Production Environment
-1. Clone or pull the `react-pwa-reference-storefront` repository to your directory.
-2. Navigate to the `react-pwa-reference-storefront` directory.<br>
-3. To build the application in production mode, run the `npm run build` command.
+1. Ensure you have read through the documentation [here](https://github.com/elasticpath/facebook-chat/blob/master/README.md).
+2. Run the `cd login` command.
+3. To install dependencies, run the `npm install` command.
+4. Configure the `./src/ep.config.json` file as required for the environment.<br/> For more information, see the [Configuration Parameter Descriptions](#configuration-parameter-descriptions) section.
+5. To build the application in production mode, run the `npm run build` command.
 This Builds the app for production to the `build` folder.<br>
 It correctly bundles React in production mode and optimizes the build for the best performance.<br>
 The build is minified and the filenames include the hashes.<br>
-4. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
+6. The built files may be hosted on any webserver of your choosing.
+6. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
 
 ## Terms And Conditions
 
