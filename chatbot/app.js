@@ -27,9 +27,9 @@ const VERIFY_TOKEN = '<Randomly_Generated_Token_To_Provide_To_Facebook>';
 const PAGE_ACCESS_TOKEN = '<Token_Provided_By_Facebook>';
 
 const PORT = 3000;
-const EP_SERVER = 'http://<Customer>.epdemos.com/cortex';
+const EP_SERVER = 'http://<Customer_demo_url>/cortex';
 const EP_SCOPE = '<Customer_Store>';
-const EP_IMAGES = 'https://s3-us-west-2.amazonaws.com/ep-demo-images/<Customer>/';
+const EP_IMAGES = 'https://s3-us-west-2.amazonaws.com/<link_to_images>/';
 
 let Cortex = require("./cortex");
 let urlExists = require('url-exists');
