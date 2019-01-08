@@ -33,6 +33,25 @@ const EP_IMAGES = 'https://s3-us-west-2.amazonaws.com/<link_to_images>/';
 
 let Cortex = require("./cortex");
 let urlExists = require('url-exists');
+let firebase = require('firebase-admin');
+require("firebase/firestore"); // required for "side-effets"
+
+let serviceAccount = require('<Service_Account>.json');
+
+firebase.initializeApp({
+  apiKey: '<API_Key>',
+  authDomain: "<Auth_Domain>",
+  appName: '<App_Name>',
+  credential: firebase.credential.cert(serviceAccount),
+  databaseURL: '<Database_Url>'
+});
+
+var db = firebase.firestore();
+// Disable deprecated features
+db.settings({
+  timestampsInSnapshots: true
+});
+
 let orderArray = [];
 
 const NO_MENU = -1;
@@ -84,8 +103,6 @@ const SEARCH_VOCABULARY = [
   }
 ];
 
-let authUsers = {};
-
 const
   request = require('request'),
   express = require('express'),
@@ -128,24 +145,34 @@ app.post('/webhook', (req, res) => {
     body.entry.forEach(function (entry) {
       const webhook_event = entry.messaging[0];
       const sender_psid = webhook_event.sender.id;
-      if (!authUsers[sender_psid]) {
-        if (webhook_event.account_linking) {
-          authUsers[sender_psid] = webhook_event.account_linking.authorization_code;
-          global.cortexInstance = Cortex.createInstanceWithToken(webhook_event.account_linking.authorization_code, EP_SERVER, EP_SCOPE);
-          sendMessageToUser(sender_psid, {'text': 'You are successfully logged in!'}, NO_MENU);
-        } else {
-          sendMessageToUser(sender_psid, getLoginTemplate(), NO_MENU);
-        }
-      } else {
-        console.log('EP-CHATBOT. Cortex Client instance created successfuly');
-        if (webhook_event.message && webhook_event.message.text) {
-          if (!handleNLP(sender_psid, webhook_event.message.text)) {
-            parseMessageFromUser(sender_psid, WELCOME_MENU);
+      db.collection('users').doc(sender_psid).get().then((data) => {
+        if (!data['_fieldsProto']) {
+          if (webhook_event.account_linking) {
+            db.collection('users').doc(sender_psid).set({
+                'cortex_token': webhook_event.account_linking.authorization_code
+            }).then(() => {
+              console.log('EP-CHATBOT: User successfully logged in');
+              global.cortexInstance = Cortex.createInstanceWithToken(webhook_event.account_linking.authorization_code, EP_SERVER, EP_SCOPE);
+              sendMessageToUser(sender_psid, {'text': 'You are successfully logged in!'}, NO_MENU);
+            }).catch(() => {
+              console.log('EP-CHATBOT: Unable to authenticate user');
+              sendMessageToUser(sender_psid, {'text': 'Unable to authenticate you. Please try again.'}, NO_MENU);
+            });
+          } else {
+            sendMessageToUser(sender_psid, getLoginTemplate(), NO_MENU);
           }
-        } else if (webhook_event.postback) {
-          handlePostback(sender_psid, webhook_event.postback);
+        } else {
+          global.cortexInstance = Cortex.createInstanceWithToken(data['_fieldsProto']['cortex_token'].stringValue, EP_SERVER, EP_SCOPE);
+          console.log('EP-CHATBOT. Cortex Client instance created successfuly');
+          if (webhook_event.message && webhook_event.message.text) {
+            if (!handleNLP(sender_psid, webhook_event.message.text)) {
+              parseMessageFromUser(sender_psid, WELCOME_MENU);
+            }
+          } else if (webhook_event.postback) {
+            handlePostback(sender_psid, webhook_event.postback);
+          }
         }
-      }
+      });
     });
     // Return a '200 OK' response to all events
     res.status(200).send('EP-CHATBOT. Event received');
