@@ -124,7 +124,6 @@ app.get('/webhook', (req, res) => {
 // Accept POST requests at /webhook endpoint
 app.post('/webhook', (req, res) => {
   const body = req.body;
-  console.log('body = ' + JSON.stringify(body));
   if (body.object === 'page') {
     body.entry.forEach(function (entry) {
       const webhook_event = entry.messaging[0];
@@ -272,11 +271,21 @@ function parseMessageFromUser(sender_psid, messageID) {
         }).catch((err) => console.log(err));
       } else if (messageID.startsWith(ADD_TO_CART_PREFIX)) {
 
-        const objectToAddToCart = messageID.replace(ADD_TO_CART_PREFIX, '');
+        let objectToAddToCart = messageID.replace(ADD_TO_CART_PREFIX, '');
+        let quantity = 1;
 
-        console.log('EP-CHATBOT. Requesting add ' + objectToAddToCart + ' to cart');
+        if (objectToAddToCart.startsWith('q_')) {
+          const pattern = 'q_([0-9]*)_(.*)';
+          const regexp = new RegExp(pattern, 'ig');
+          let match = [];
+          if ((match = regexp.exec(objectToAddToCart)) !== null) {
+            quantity = match[1];
+            objectToAddToCart = match[2];
+          }
+        }
+        console.log('EP-CHATBOT. Requesting add ' + objectToAddToCart + ' (quantity: ' + quantity + ') to cart');
 
-        global.cortexInstance.cortexAddToCart(objectToAddToCart, 1).then((response) => {
+        global.cortexInstance.cortexAddToCart(objectToAddToCart, quantity).then((response) => {
           sendMessageToUser(sender_psid, getMainMenuTemplate('The item has been added to your cart'), NO_MENU);
         }).catch((err) => console.error(err));
       } else if (messageID.startsWith(REMOVE_FROM_WISHLIST_PREFIX)) {
@@ -500,12 +509,16 @@ function requestGetWishList(sender_psid, itemsInWishlist) {
   }
 }
 
-function requestSearchResults(sender_psid, results) {
+function requestSearchResults(sender_psid, results, quantity) {
   // Generate list of products
   if (results.length > 0) {
     const response = {};
     sendMessageToUser(sender_psid, {'text': 'Here is what I found for you:'}, NO_MENU);
-    sendMessageSearchResults(results, sender_psid);
+    if (quantity === null) {
+      sendMessageSearchResults(results, sender_psid);
+    } else {
+      sendMessageAddWithQuantity(results, quantity, sender_psid);
+    }
   } else {
     // Send message with no items in the wishlist
     sendMessageToUser(sender_psid, getMainMenuTemplate("I did not find any results. What else I can do for you?"), NO_MENU);
@@ -803,6 +816,66 @@ function sendMessageSearchResults(results, sender_psid) {
   }).catch((err) => console.log(err));
 }
 
+function sendMessageAddWithQuantity(results, quantity, sender_psid) {
+  const promises = [];
+
+  if (results.length > 10) {
+    results.length = 10;
+  }
+
+  for (let i = 0; i < results.length; i++) {
+    promises.push(getImageURL(results[i].code));
+  }
+
+  Promise.all(promises).then((productImages) => {
+
+    const response = {};
+
+    response.attachment = {};
+    response.attachment.payload = {};
+    response.attachment.payload.elements = [];
+    response.attachment.type = 'template';
+    response.attachment.payload['template_type'] = 'generic';
+
+    orderArray = [];
+
+    for (let i = 0; i < results.length; i++) {
+
+      const productsArray = [];
+      const productCode = results[i].code;
+      const productName = results[i].definition.displayName;
+      const productPrice = results[i].price.purchasePrice[0].display;
+      const productPriceAmount = results[i].price.purchasePrice[0].amount;
+
+      productsArray.push(productCode, productName, productPriceAmount, productImages[i]);
+      orderArray.push(productsArray);
+
+      let product = {};
+
+      product.title = productName;
+      product.subtitle = 'Price: ' + productPrice;
+      product['image_url'] = productImages[i];
+
+      const buttons = [];
+
+      const addToCartQuantityButton = {};
+
+      addToCartQuantityButton.type = 'postback';
+      addToCartQuantityButton.title = 'Add to cart (x' + quantity + ')';
+      addToCartQuantityButton.payload = ADD_TO_CART_PREFIX + 'q_' + quantity + '_' + productCode;
+
+      buttons.push(addToCartQuantityButton);
+
+      product.buttons = buttons;
+
+      response.attachment.payload.elements.push(product);
+    }
+
+    // Sends Shopping Cart Information to the User
+    sendMessageToUser(sender_psid, response, NO_MENU);
+  }).catch((err) => console.log(err));
+}
+
 /*****************************/
 /* PART 6. MESSAGE TEMPLATES */
 
@@ -1041,7 +1114,7 @@ function handleNLP(sender_psid, message) {
     sendMessageToUser(sender_psid, {'text': 'Let me search items with keywords: ' + keywordsSearch.toString()}, NO_MENU);
     let keywords = keywordsSearch.join(' ');
     global.cortexInstance.getItemsByKeyword(keywords).then((response) => {
-      requestSearchResults(sender_psid, response);
+      requestSearchResults(sender_psid, response, null);
     }).catch((err) => console.error(err));
     return true;
   }
@@ -1060,6 +1133,17 @@ function handleNLP(sender_psid, message) {
       console.log(err);
       sendMessageToUser(sender_psid, {'text': 'The coupon ' + coupon + ' does not exist or is not valid'}, NO_MENU);
     });
+    return true;
+  }
+
+  let keywordsQuantity = isAddToCart(message);
+  if (keywordsQuantity !== null && keywordsQuantity !== undefined && keywordsQuantity !== {}) {
+    const quantity = keywordsQuantity.quantity;
+    const keywords = keywordsQuantity.keywords;
+    sendMessageToUser(sender_psid, {'text': 'Let me search items with keywords: ' + keywords}, NO_MENU);
+    global.cortexInstance.getItemsByKeyword(keywords).then((response) => {
+      requestSearchResults(sender_psid, response, quantity);
+    }).catch((err) => console.error(err));
     return true;
   }
 
@@ -1088,8 +1172,53 @@ function isSearch(message) {
   }
 }
 
-function isAddToCart(message) {
+/* 
+  This method is required to clean the array
+  For some reason, using Array.filter() won't work on the groups from a RegExp.
+  According to the groups in the regex, the values that we want to keep are the 2 last ones that are not undefined or null
+  Because the we accept 'add 5x something' and 'add something x5' the order of the quantity and the keywords cannot be known
+  So it is required to check the values of the group to know which group is the quantity and which group is the keywords
+*/
+function getQuantityAndKeywords(array) {
+  let value1;
+  let value2;
+  let last2Values = 0;
+  for (let i = match.length - 1; i > 0; i--) {
+    if (match[i] !== null && match[i] !== undefined && match[i] !== '') {
+      if (last2Values == 0) {
+        value1 = match[i];
+      } else {
+        value2 = match[i];
+      }
+      last2Values++;
+    }
+    if (last2Values == 2) {
+      break;
+    }
+  }
+  result = {};
+  if (isNaN(value1)) {
+    result.quantity = value2;
+    result.keywords = value1;
+  } else {
+    result.quantity = value1;
+    result.keywords = value2;
+  }
+  return result;
+}
 
+function isAddToCart(message) {
+  let vocabulary = '';
+  for (let i = 0; i < ADD_TO_CART_VOCABULARY.length; i++) {
+    vocabulary = vocabulary + ADD_TO_CART_VOCABULARY[i] + '|';
+  }
+  vocabulary = vocabulary.substring(0, vocabulary.length - 1);
+  const regexp = new RegExp('(' + vocabulary + ') (([0-9]*) ?[xX]? ([a-zA-Z ]*)|([a-zA-Z ]*) ?[xX] ?([0-9]*))', 'ig');
+
+  if ((match = regexp.exec(message)) !== null) {
+    return getQuantityAndKeywords(match);
+  }
+  return null;
 }
 
 function isApplyPromotion(message) {
