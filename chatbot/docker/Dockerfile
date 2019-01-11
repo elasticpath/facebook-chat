@@ -13,7 +13,7 @@ ARG FIREBASE_AUTH_DOMAIN
 ARG FIREBASE_APP_NAME
 ARG FIREBASE_DB_URL
 
-COPY . /chatbot
+ADD ./ /chatbot
 
 RUN npm install
 
