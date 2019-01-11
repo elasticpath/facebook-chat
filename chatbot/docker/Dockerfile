@@ -17,6 +17,6 @@ COPY . /chatbot
 
 RUN npm install
 
-RUN /chatbot/script.sh
+RUN /chatbot/docker/script.sh
 
 CMD ["node", "/chatbot/app.js"]
