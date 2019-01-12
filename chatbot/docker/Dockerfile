@@ -13,11 +13,11 @@ ARG FIREBASE_AUTH_DOMAIN
 ARG FIREBASE_APP_NAME
 ARG FIREBASE_DB_URL
 
-RUN ["chmod", "+x", "./chatbot/docker/script.sh"]
-
-RUN ./chatbot/docker/script.sh
-
 ADD ./ /chatbot
+
+RUN ["chmod", "+x", "/chatbot/chatbot/docker/script.sh"]
+
+RUN /chatbot/chatbot/docker/script.sh
 
 RUN npm install
 
