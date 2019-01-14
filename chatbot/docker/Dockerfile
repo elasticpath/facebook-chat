@@ -15,9 +15,9 @@ ARG FIREBASE_DB_URL
 
 ADD ./ /chatbot
 
-RUN ["chmod", "+x", "/chatbot/chatbot/docker/script.sh"]
+RUN ["chmod", "+x", "/chatbot/docker/script.sh"]
 
-RUN /chatbot/chatbot/docker/script.sh
+RUN /chatbot/docker/script.sh
 
 RUN npm install
 
