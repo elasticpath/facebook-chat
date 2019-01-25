@@ -1,8 +1,8 @@
-# Reference Facebook Chatbot Quick Start Guide
+# Reference Chatbot Quick Start Guide
 
 ## Table of Contents
 
-  * Reference Facebook Chatbot
+  * Reference Chatbot
       * [Documentation Introduction](#documentation-introduction)
       * [Related Resources](#related-resources)
   * [Overview](#overview)
@@ -14,13 +14,13 @@
 
 ### Documentation Introduction
 
-This document provides guidelines to setup and configure the Reference Facebook Chatbot, and integrate it with the REACT PWA Reference Storefront. However, this document is not a primer for JavaScript and is intended for professionals who are familiar with the following technologies:
+This document provides guidelines to setup and configure the Reference Chatbot, and integrate it with the REACT PWA Reference Storefront. However, this document is not a primer for JavaScript and is intended for professionals who are familiar with the following technologies:
 
   * [Nodejs](https://nodejs.org/en/)
 
 ### Related Resources
 
-- [Reference Facebook Chatbot Overview](https://developers.elasticpath.com/reference-experiences)
+- [Reference Chatbot Overview](https://developers.elasticpath.com/reference-experiences)
 - [Chatbot README](chatbot/README.md)
 - [Login Server README](login/README.md)
 
@@ -30,7 +30,7 @@ This document provides guidelines to setup and configure the Reference Facebook 
 
 ## Overview
 
-The Reference Facebook Chatbot is a flexible chatbot integrated with Facebook Messenger, which communicates with Elastic Path’s RESTful e-commerce API, Cortex API. Through the Cortex API, the chatbot uses the e-commerce capabilities provided by Elastic Path Commerce and interacts with data in a RESTful manner.
+The Reference Chatbot is a flexible chatbot integrated with Facebook Messenger, which communicates with Elastic Path’s RESTful e-commerce API, Cortex API. Through the Cortex API, the chatbot uses the e-commerce capabilities provided by Elastic Path Commerce and interacts with data in a RESTful manner.
 
 ## Setting up the Chatbot
 
@@ -52,7 +52,7 @@ Ensure that the following software are installed:
 2. Run the `cd facebook-chat` command.
 3. Follow the instructions detailed in the Chatbot README file [here](chatbot/README.md).
 4. Follow the instructions detailed in the Login Server README file [here](login/README.md).
-5. (Optional) You may integrate the Reference Facebook Chatbot with the REACT PWA Reference Storefront available [here](https://github.com/elasticpath/react-pwa-reference-storefront/).
+5. (Optional) You may integrate the Reference Chatbot with the REACT PWA Reference Storefront available [here](https://github.com/elasticpath/react-pwa-reference-storefront/).
 
 ## Terms And Conditions
 
