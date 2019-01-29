@@ -26,6 +26,7 @@ You must configure the following parameters in the `./src/ep.config.json` file:
 |`cortexApi.scope`| Required| String| Name of the store from which Cortex retrieves data.|
 |`cortexApi.pathForProxy`|Required|String| The path to which the [Webpack](https://webpack.js.org/) proxy routes the Cortex calls from the storefront. This value is a URL that consists of hostname and port of a running instance of Cortex. Leave this field blank to disable proxy.|
 
+
 ## Setting up a Development Environment
 
 1. Ensure you have read through the documentation [here](https://github.com/elasticpath/facebook-chat/blob/master/README.md).
@@ -45,7 +46,12 @@ This Builds the app for production to the `build` folder.<br>
 It correctly bundles React in production mode and optimizes the build for the best performance.<br>
 The build is minified and the filenames include the hashes.<br>
 6. The built files may be hosted on any webserver of your choosing.
-6. To see the running Reference Facebook Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
+7. To see the running Reference Chatbot Login Page, navigate to `http://localhost:9000/auth/` .
+
+The application contains a `Docker` folder that contains itself a Dockerfile, a Shell script and an Nginx configuration file.
+The Dockerfile is using a NodeJS image and an Nginx image. It uses the Production environment (see above). It contains 2 arguments (`SCOPE` and `CORTEX_URL`) that you can populate using the `--build-arg` argument when creating the Docker image
+The Shell script is populating the configuration file according to the arguments that are passed to the Docker image. 
+The Nginx configuration just exposes the built files that are created by the Dockerfile when running `npm run build`.
 
 ## Terms And Conditions
 
