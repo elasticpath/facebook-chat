@@ -8,6 +8,7 @@
     * [Running the application](#running-the-application)
     * [Configuring the Facebook API](#configuring-the-facebook-api)
     * [Deploy the application](#deploy-the-application)
+    * [Features](#features)
     * [Making tests](#making-tests)
   * [Appendices](#appendices)
   * [Terms And Conditions](#terms-and-conditions)
@@ -23,9 +24,9 @@ The application requires some information that can be stored either in a environ
 VERIFY_TOKEN='<Randomly_Generated_Token_To_Provide_To_Facebook>'
 PAGE_ACCESS_TOKEN='<Token_Provided_By_Facebook>'
 
-EP_SERVER='http://<Customer>.epdemos.com/cortex'
+EP_SERVER='http://<Customer_demo_url>/cortex'
 EP_SCOPE='<Customer_Store>'
-EP_IMAGES='https://s3-us-west-2.amazonaws.com/ep-demo-images/<Customer>/'
+EP_IMAGES='https://s3-us-west-2.amazonaws.com/<link_to_images>/'
 ```
 
 constants example in <a href="https://github.elasticpath.net/sales-demos/facebook-chatbot/blob/master/app.js">App.js</a>
@@ -119,6 +120,29 @@ If you get a 404 error then it is likely that the deployment went wrong or that 
 If you get a 403 error, then you have a configuration issue in your .env file or in your constants.
 To debug it, run `forever stop app.js`, then in the first method `app.get('/webhook', (req, res) => {...` add logs to check out the values of `token` that should be your `VERIFY_TOKEN` and `mode` that should be `subscribe`.
 
+The application contains a `Docker` folder that contains a Dockerfile and a Shell script. The Dockerfile uses a NodeJS image and contains multiple arguments that you can populate using the `--build-args` argument when building the image.
+These Docker arguments are used in the Shell script to replace the constants in the code, this way, the chatbot is easily deployable and doesn't require to modify directly the code.
+
+|  Parameter| Importance|Type|Description|
+|--|--|--|--|
+|`PAGE_ACCESS_TOKEN`| Required| String| The token that is provided by Facebook on (developers.facebook.com) for each application.|
+|`VERIFY_TOKEN`| Required| String| The token that you have to generate and pass to Facebook when configuring the webhooks.|
+|`SCOPE`|Required|String| Name of the store from which Cortex retrieves data.|
+|`S3_URL`|Required|String| The URL that consists of the path to images hosted on an external CMS. Set this parameter to the complete URL of the images by replacing the `<link_to_images>` with the path of your images|
+|`FIREBASE_API_KEY`|Required|String| Your firebase API key.|
+|`FIREBASE_AUTH_DOMAIN`|Required|String| This is the unique domain provided by Firebase for your application.|
+|`FIREBASE_APP_NAME`|Required|String| This is the name you use to register your application on Firebase.|
+|`FIREBASE_DB_URL`|Required|String| This is the database URL that Firebase provides.|
+
+### Features
+
+In its current state. The chatbot is able to perform multiple actions.
+It contains regular actions that are triggered by clicking on buttons in the Messenger application: Login to Cortex, Add an item to the cart, Add an item to the wishlist, Check out, Move an item from the cart to the wishlist and vice-versa.
+But it also contains 3 NLP features that use a limited vocabulary. 
+- You can search items based on keywords, for example: `search for golf bag` will perform a search request with keywords `golf` and `bag`
+- You can add items in your cart based on keywords and on quantity, for example: `add 3x golf bag` will perform a search based on `golf` and `bag` and will send a response that enables the user to add 3 of the found items in their cart
+- You can apply a promotion coupon, for example: `apply REDUCTION10` will apply the `REDUCTION10` coupon if it exists
+The last major feature is the ability to link a Facebook account to a Cortex account. This is done by authenticating on the login application that is included in the chatbot, this application exposes a form that that performs authentication requests to a Cortex server.
 
 ### Making tests
 

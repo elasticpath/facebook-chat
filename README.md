@@ -25,8 +25,6 @@ This document provides guidelines to setup and configure the Reference Chatbot, 
 - [Login Server README](login/README.md)
 
 - [REACT PWA Reference Storefront Repository](https://github.com/elasticpath/react-pwa-reference-storefront/)
-- [REACT PWA Reference Storefront Overview](https://developers.elasticpath.com/reference-experiences)
-- [REACT PWA Reference Storefront Documentation](https://elasticpath.github.io/react-pwa-reference-storefront/)
 
 ## Overview
 
