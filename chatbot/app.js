@@ -248,7 +248,7 @@ function parseMessageFromUser(sender_psid, messageID) {
           }
           requestOrdersMessage(sender_psid, orders);
         } else {
-          sendMessageToUser(sender_psid, {'text': 'You do not have any passed orders'}, MAIN_MENU);
+          sendMessageToUser(sender_psid, {'text': 'You do not have any past orders'}, MAIN_MENU);
         }
       }).catch(err => {
         console.log(err);
