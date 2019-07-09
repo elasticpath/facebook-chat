@@ -1,4 +1,8 @@
-# Reference Chatbot Quick Start Guide
+# NOTICE
+
+:exclamation: [NOTICE] This project is no longer active/maintained. Please use https://github.com/elasticpath/lex-chatbot
+
+## Reference Chatbot Quick Start Guide
 
 ## Overview
 
@@ -6,7 +10,7 @@ The Reference Chatbot is a flexible chatbot integrated with Facebook Messenger, 
 
 ### Documentation
 
-- [Reference Chatbot Documentation](https://documentation.elasticpath.com/chatbot/index.html)
+- [Reference Chatbot Documentation](https://documentation.elasticpath.com/chatbot/docs/facebook-chat/index.html)
 
 ## Terms And Conditions
 
