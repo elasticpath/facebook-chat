@@ -1,8 +1,6 @@
-# NOTICE
+## Reference Chatbot Quick Start Guide
 
 :exclamation: [NOTICE] This project is no longer active/maintained. Please use https://github.com/elasticpath/lex-chatbot
-
-## Reference Chatbot Quick Start Guide
 
 ## Overview
 
