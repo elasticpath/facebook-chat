@@ -1,7 +1,5 @@
 ## Reference Chatbot Quick Start Guide
 
-:exclamation: [NOTICE] This project is no longer active/maintained. Please use https://github.com/elasticpath/lex-chatbot
-
 ## Overview
 
 The Reference Chatbot is a flexible chatbot integrated with Facebook Messenger, which communicates with Elastic Path’s RESTful e-commerce API, Cortex API. Through the Cortex API, the chatbot uses the e-commerce capabilities provided by Elastic Path Commerce and interacts with data in a RESTful manner.
